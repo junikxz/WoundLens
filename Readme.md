@@ -74,4 +74,4 @@ The authors acknowledge the Department of Informatics at Universitas Multimedia 
 Not Applicable
 
 # DOI
-DOI: 10.5281/zenodo.18885215
+[DOI: 10.5281/zenodo.18885215](https://doi.org/10.5281/zenodo.18885215)
