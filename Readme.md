@@ -1,77 +1,52 @@
-# Wound-Lens: Automated Multi-Class Wound Classification
+# Wound-Lens: multi-class wound classification (research prototype)
 
-## Description
-Wound-Lens is an automated computer vision system developed for diabetic wound screening and multi-class wound classification. Utilizing the ResNet50 architecture, the system provides high-fidelity identification across ten clinically relevant wound categories, offering transparent decision-making through Local Interpretable Model-agnostic Explanations (LIME).
+Code and data for the manuscript *"Wound-Lens: An Automated Computer Vision System for Diabetic Wound Screening and Classification using ResNet50"* (PeerJ Computer Science, submission 133600).
 
-## Dataset Information
-This research involved two primary datasets:
-* **Final Dataset (10-Class):** The [Kaggle Wound Classification Dataset](https://www.kaggle.com/datasets/ibrahimfateen/wound-classification/data) by Ibrahim Fateen, featuring 10 categories including Diabetic, Venous, Surgical, Burn, Pressure, Laceration, Bruise, and Normal Tissue.
-* **Preliminary Dataset (6-Class):** An [open-access repository](https://github.com/uwm-bigdata/wound-classification-using-images-and-locations) by the University of Wisconsin–Milwaukee Big Data Group, focused on six primary wound and tissue classes.
+> Wound-Lens is a research prototype. It is **not** a medical device and has no external or prospective clinical validation.
 
-## Code Information
-The implementation utilizes a pre-trained ResNet50 backbone with a compact classification head for optimal computational efficiency. Transparency is ensured via LIME heatmaps overlaid on original images to highlight clinically meaningful regions such as necrotic tissue and ulcer beds.
+## What this repository contains
 
-## Usage Instructions
-1. **Dataset Preparation:** Download the Kaggle 10-class dataset and organize images into category-specific subfolders.
-2. **Environment Setup:** Ensure Python 3.12 is installed and all dependencies from the Requirements section are met.
-3. **Training:** Execute the provided training script to initialize the ResNet50 architecture with ImageNet weights.
-4. **Validation & XAI:** Generate LIME heatmaps for test images to verify that the model's decision logic aligns with clinical signatures.
+| Path | Content |
+|---|---|
+| `WoundLens.ipynb` | Full pipeline: data loading, stratified 5-fold cross-validation, ResNet50 and MobileNetV2 training, statistics, LIME |
+| `data/Wound_Dataset/` | The 2,940 images used in the study, one folder per class (10 classes) |
+| `requirements.txt` | Python packages |
 
-## Requirements
-To set up the environment on macOS with Python 3.12, install the following dependencies:
-```bash
-pip install tensorflow keras numpy matplotlib scikit-learn lime
-```
+Model weights (`*.h5`) are not included because of file size. They are reproduced by running the notebook.
 
-# Methodology (Data Processing & Modeling)
+## Data
 
-## Preprocessing
-To address data limitations and ensure model robustness, the following techniques were implemented:
-* **Data Augmentation**: Applied aggressive transformations, including rotations and flips, to increase dataset variance.
-* **Regularization**: Tuned regularization parameters specifically to mitigate the impact of class imbalance and prevent overfitting.
+- **Source:** *Collected and Categorized Wound Images Dataset* on Kaggle, compiled by Ibrahim Fateen (2023): https://www.kaggle.com/datasets/ibrahimfateen/wound-classification
+- **Classes (10):** abrasions, bruises, burns, cuts, diabetic wounds, lacerations, normal skin, pressure wounds, surgical wounds, venous wounds.
+- **Origin and labels:** The Kaggle page does not state the original sources or how the images were labelled. Part of the images in the dataset come from the AZH wound dataset (Anisuzzaman et al., 2022), whose images were labelled by a wound specialist. The AZH collection covers only some of our ten classes, so it accounts for only part of the dataset. The remaining images appear to come from other public collections (for example WoundDB 2021 and Medetec), and their labelling is not documented. We used the labels as provided and did not re-label the images.
+- **Licence and reuse:** The Kaggle page lists the licence as "Unknown", and the images come from third-party collections. We include the images only so that the results can be reproduced. Please check the terms of the original collections before any other use.
+- **Duplicates:** We found 21 images that are identical copies of other images. In every fold, an image and its identical copies are kept in the same set. The dataset may also contain other near-duplicate (for example mirrored) images; the notebook assigns each image to a group automatically.
 
-## Backbone Selection
-The architecture was transitioned from MobileNetV2 to ResNet50. This shift was conducted to capture richer hierarchical features and deeper spatial representations necessary for complex medical imaging tasks.
+## How to run
 
-## Interpretability
-The LIME framework was integrated to ensure clinical reliability. This validation step confirms that the model focuses on pathological features rather than non-clinical artifacts such as bed linens or measurement rulers.
+1. Install the packages: `pip install -r requirements.txt` (the study used TensorFlow 2.21.0).
+2. Open `WoundLens.ipynb`. In the first cell, set `BASE = "data/Wound_Dataset"` and `OUT = "results"` (the notebook creates this folder when it runs; remove the Google Drive block if you do not use Colab).
+3. Run all cells. The cross-validation step saves a checkpoint (`results/cv_results.pkl`) after every fold and resumes from it if interrupted.
 
----
+A GPU is recommended: the 10 training runs (ResNet50 and MobileNetV2, 5 folds each) took about 1 hour on an A100 GPU.
 
-# Materials & Methods
+## Method in brief
 
-## Computing Infrastructure
-* **Operating System**: macOS
-* **Python Version**: 3.12
-* **Hardware**: Apple Silicon (M-series) or mid-range GPUs
+- Images are resized to 224 × 224 pixels (aspect ratio preserved, zero padding).
+- Stratified, duplicate-grouped 5-fold cross-validation (seed 42). In each fold, the test fold is never used for training, early stopping, or model selection.
+- Augmentation (training only): rotation ±25°, shift ±18%, shear ±15°, zoom 0.75–1.25, brightness 0.75–1.25, horizontal flip.
+- ResNet50 (last 12 layers fine-tuned) with a head of global average pooling, batch normalization, dense 512, dropout 0.5, and softmax; MobileNetV2 baseline with the same head.
+- Adam (learning rate 1e-4), batch size 32, up to 30 epochs, class-weighted loss, early stopping, and learning-rate scheduling.
+- Mean ± SD and 95% confidence intervals (Nadeau–Bengio correction) across folds; paired t-test for the backbone comparison.
+- LIME for qualitative inspection only.
 
-## Evaluation Method
-The system was evaluated through the following rigorous metrics:
-1. **Training and Validation Behavior**: Initial experiments on the 6-class dataset revealed a gap between training (~93%) and validation (76%) accuracy due to data volume and class imbalance.
-2. **Classification Performance on Test Set**: The final Wound-Lens model achieved 96% overall accuracy on a held-out test set of 882 images.
+The results are reported in the manuscript; the notebook regenerates the corresponding tables and figures in `results/` when it is run.
 
-### Comparison Between Previous Model
-| Metric | Preliminary Model (MobileNetV2) | Final Model (ResNet50 - Wound-Lens) |
-| :--- | :--- | :--- |
-| **Dataset Size** | 6-Class (Limited) | 10-Class (Comprehensive) |
-| **Training Accuracy** | ~93% | High/Stable |
-| **Validation Accuracy** | 76% | 96% |
-| **Generalization** | Limited (Overfitting) | Robust |
+## References
 
----
+- Fateen I. 2023. Collected and Categorized Wound Images Dataset. Kaggle.
+- Anisuzzaman DM, Patel Y, Rostami B, Niezgoda J, Gopalakrishnan S, Yu Z. 2022. Multi-modal wound classification using wound image and location by deep neural network. Scientific Reports 12:20057.
 
-# Citations
-Not Applicable
+## Contact
 
----
-
-# Acknowledgements
-The authors acknowledge the Department of Informatics at Universitas Multimedia Nusantara and supervisor David Agustriawan for their guidance and support during this research.
-
----
-
-# License & Contribution Guidelines
-Not Applicable
-
-# DOI
-[DOI: 10.5281/zenodo.18885215](https://doi.org/10.5281/zenodo.18885215)
+Corresponding author: David Agustriawan (david.agustriawan@umn.ac.id), Universitas Multimedia Nusantara, Indonesia.
